@@ -1541,6 +1541,39 @@ class YouTubeChatDownloader(BaseChatDownloader):
         else:
             details['status'] = 'past'
 
+        # Continuation changes mid October 2025 >>
+        try:
+            client_continuation = \
+            yt_initial_data['contents']['twoColumnWatchNextResults']['conversationBar']['liveChatRenderer'][
+                'continuations'][0]['reloadContinuationData']['continuation']
+
+            if details['status'] != 'past':
+                response = self._session_get(f'https://www.youtube.com/live_chat?continuation={client_continuation}')
+            else:
+                response = self._session_get(f'https://www.youtube.com/live_chat_replay?continuation={client_continuation}')
+
+            html = response.text
+            yt = regex_search(html, self._YT_INITIAL_DATA_RE)
+            dictLiveChats = try_parse_json(yt)
+
+            continuations = \
+                dictLiveChats['continuationContents']['liveChatContinuation']['header']['liveChatHeaderRenderer'][
+                    'viewSelector'][
+                    'sortFilterSubMenuRenderer']['subMenuItems']
+
+            top_continuation = continuations[0]['continuation']['reloadContinuationData']['continuation']
+            live_continuation = continuations[1]['continuation']['reloadContinuationData']['continuation']
+
+            if details['status'] != 'past':
+                details['continuation_info']['Top chat'] = top_continuation
+                details['continuation_info']['Live chat'] = live_continuation
+            else:
+                details['continuation_info']['Top chat replay'] = top_continuation
+                details['continuation_info']['Live chat replay'] = live_continuation
+        except:
+            pass
+        # Continuation changes mid October 2025 <<
+        
         return details, player_response_info, yt_initial_data, ytcfg
 
     def _get_initial_video_info(self, video_id, params=None, video_type='video'):
