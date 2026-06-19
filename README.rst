@@ -34,9 +34,21 @@ Chat Downloader
     [![Downloads](https://img.shields.io/github/downloads/xenova/chat-downloader/total.svg)](https://github.com/xenova/chat-downloader/releases)
 
 `Chat Downloader`_ is a simple tool used to retrieve chat messages from livestreams,
-videos, clips and past broadcasts. No authentication needed!
+videos, clips and past broadcasts.
 
 .. _Chat Downloader: https://github.com/xenova/chat-downloader
+
+******************
+Why this fork?
+******************
+
+This fork introduces critical bug fixes for YouTube chat scraping that are not yet merged into the upstream repository (Pull Request is currently open):
+
+* **Lazy-loaded Cookies (YouTube):** Fixed an issue where initial requests to private, age-restricted (18+), or member-only videos would fail with a ``LoginRequired`` error because cookies were applied too late in the session lifecycle. Cookies are now safely loaded before the very first request is made.
+* **Upcoming Streams Handling (YouTube):** Fixed chat token extraction for scheduled (``upcoming``) live streams, allowing the tool to properly fetch pre-stream chat history and bypassing incorrect video type classification issues.
+* **GraphQL API Fixes (Twitch):** Updated obsolete SHA-256 operation hashes (``_OPERATION_HASHES``) for Twitch's GQL endpoint to resolve client-side tracking and query rejections.
+* **Stream Metadata Recovery (Twitch):** Added the missing ``includeIsDJ`` variable to the ``StreamMetadata`` payload, preventing API rejections when resolving live channel information.
+* **Defensive Parsing Improvements (Twitch):** Refactored nested GQL response extractions using safe dictionary lookups (via ``multi_get`` and ``.get()`` properties) to eliminate fatal ``KeyError`` crashes during high-density browse page fetches.
 
 ############
 Installation

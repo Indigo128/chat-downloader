@@ -1424,6 +1424,22 @@ class YouTubeChatDownloader(BaseChatDownloader):
         if params is None:
             params = {}
 
+            # FIX: FORCE LAZY-LOAD COOKIES BEFORE THE INITIAL REQUEST >>
+            # If a cookie file path is provided and the session cookies are not yet initialized
+            cookies_file = params.get('cookies')
+            if cookies_file and not self.session.cookies:
+                import os
+                from urllib.request import MozillaCookieJar
+                if os.path.exists(cookies_file):
+                    try:
+                        cj = MozillaCookieJar()
+                        cj.load(cookies_file, ignore_discard=True, ignore_expires=True)
+                        self.session.cookies.update(cj)
+                        log('debug', f'Successfully forced cookies for the initial request from: {cookies_file}')
+                    except Exception as e:
+                        log('warning', f'Failed to parse cookies at the initial stage: {e}')
+            # FIX: FORCE LAZY-LOAD COOKIES BEFORE THE INITIAL REQUEST <<
+
         max_attempts = params.get('max_attempts', 1)
         for attempt_number in attempts(max_attempts):
             try:
@@ -1564,7 +1580,12 @@ class YouTubeChatDownloader(BaseChatDownloader):
             top_continuation = continuations[0]['continuation']['reloadContinuationData']['continuation']
             live_continuation = continuations[1]['continuation']['reloadContinuationData']['continuation']
 
-            if details['status'] != 'past':
+            # Fix: Upcoming video chat was not read correctly >>
+            if details['status'] == 'upcoming':
+                details['continuation_info']['Top chat'] = top_continuation
+                details['continuation_info']['Live chat'] = live_continuation
+            elif details['status'] != 'past':
+            # Fix: Upcoming video chat was not read correctly <<
                 details['continuation_info']['Top chat'] = top_continuation
                 details['continuation_info']['Live chat'] = live_continuation
             else:
@@ -1573,7 +1594,7 @@ class YouTubeChatDownloader(BaseChatDownloader):
         except:
             pass
         # Continuation changes mid October 2025 <<
-
+        
         return details, player_response_info, yt_initial_data, ytcfg
 
     def _get_initial_video_info(self, video_id, params=None, video_type='video'):
@@ -1784,9 +1805,24 @@ class YouTubeChatDownloader(BaseChatDownloader):
                     'authorization': auth
                 })
 
+            # Fix crash when using cookies >>
+            #if first_time:
+            #    # must run to get first few messages, otherwise might miss some
+            #    yt_info = self._get_initial_info(init_page, params)[0]
             if first_time:
-                # must run to get first few messages, otherwise might miss some
-                yt_info = self._get_initial_info(init_page, params)[0]
+                # Must run to get the first few messages, otherwise some might be missed.
+                # Fallback to continuation request if the initial page parsing fails or returns empty data.
+                try:
+                    yt_info = self._get_initial_info(init_page, params)[0]
+                    if not yt_info:
+                        raise ParsingError('Initial video page info is empty or invalid.')
+                except ParsingError:
+                    if click_tracking_params:
+                        continuation_params['context']['clickTracking'] = {
+                            'clickTrackingParams': click_tracking_params}
+                    yt_info = self._get_continuation_info(
+                        continuation_url, params, json=continuation_params)
+            # Fix crash when using cookies <<
 
             else:
                 if is_replay and offset_milliseconds is not None:
