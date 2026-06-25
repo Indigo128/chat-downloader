@@ -1173,13 +1173,16 @@ class YouTubeChatDownloader(BaseChatDownloader):
     def _parse_video(video_renderer):
         # Get video type:
         # One of DEFAULT, UPCOMING, LIVE
-        video_type = 'DEFAULT'
+        # Keep existing videoType if it was already resolved by the caller
+        video_type = video_renderer.get('videoType', 'DEFAULT')
+        
         thumbnail_overlays = multi_get(
             video_renderer, 'thumbnailOverlays') or []
         for thumbnail_overlay in thumbnail_overlays:
-            video_type = multi_get(
+            resolved_type = multi_get(
                 thumbnail_overlay, 'thumbnailOverlayTimeStatusRenderer', 'style')
-            if video_type:
+            if resolved_type:
+                video_type = resolved_type
                 break
 
         video_renderer['videoType'] = video_type
@@ -1301,9 +1304,51 @@ class YouTubeChatDownloader(BaseChatDownloader):
 
             continuation = None
             for item in items:
-                vid = multi_get(item, 'richItemRenderer',
-                                'content', 'videoRenderer')
-                continuation_item = item.get('continuationItemRenderer')
+                # 1. Check standard renderers (videos, shorts, older stream layouts)
+                vid = (
+                    multi_get(item, 'richItemRenderer', 'content', 'videoRenderer')
+                    or multi_get(item, 'richItemRenderer', 'content', 'liveStreamRenderer')
+                    or item.get('videoRenderer')
+                    or item.get('liveStreamRenderer')
+                )
+
+                # 2. Handle the new lockupViewModel layout
+                if not vid:
+                    lockup = multi_get(item, 'richItemRenderer', 'content', 'lockupViewModel')
+                    if lockup:
+                        v_id = lockup.get('contentId')
+                        v_title = multi_get(lockup, 'metadata', 'lockupMetadataViewModel', 'title', 'content')
+                        
+                        # Extract the exact badge text from the thumbnail overlays structure
+                        overlays = multi_get(lockup, 'contentImage', 'thumbnailViewModel', 'overlays') or []
+                        
+                        v_type = 'DEFAULT'
+                        for overlay in overlays:
+                            badge_text = multi_get(
+                                overlay, 
+                                'thumbnailBottomOverlayViewModel', 
+                                'badges', 0, 
+                                'thumbnailBadgeViewModel', 
+                                'text'
+                            )
+                            if badge_text:
+                                if badge_text == 'Upcoming':
+                                    v_type = 'UPCOMING'
+                                elif badge_text in ('LIVE', 'Live'):
+                                    v_type = 'LIVE'
+                                break
+
+                        vid = {
+                            'videoId': v_id,
+                            'title': {'runs': [{'text': v_title}]} if v_title else None,
+                            'videoType': v_type
+                        }
+
+                # 3. Check for continuation token (pagination)
+                continuation_item = (
+                    item.get('continuationItemRenderer')
+                    or multi_get(item, 'richItemRenderer', 'content', 'continuationItemRenderer')
+                )
 
                 if vid:
                     yield self._parse_video(vid)
