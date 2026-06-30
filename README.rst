@@ -19,31 +19,22 @@ Chat Downloader
    :target: https://pypi.org/project/chat-downloader
    :alt: Downloads
 
-.. image:: https://img.shields.io/github/license/xenova/chat-downloader
-  :target: https://github.com/xenova/chat-downloader/blob/master/LICENSE
+.. image:: https://img.shields.io/github/license/Indigo128/chat-downloader
+  :target: https://github.com/Indigo128/chat-downloader/blob/master/LICENSE
   :alt: License
-
-.. image:: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fxenova%2Fchat-downloader%2Fmaster%2Fdocs%2F_dynamic%2Fcoverage.json
-  :target: https://pypi.org/project/chat-downloader
-  :alt: Coverage
-
-..
-    [![GitHub issues](https://img.shields.io/github/issues/xenova/chat-downloader)](https://badge.fury.io/py/chat-downloader)
-    [![GitHub forks](https://img.shields.io/github/forks/xenova/chat-downloader)](https://badge.fury.io/py/chat-downloader)
-    [![GitHub stars](https://img.shields.io/github/stars/xenova/chat-downloader)](https://badge.fury.io/py/chat-downloader)
-    [![Downloads](https://img.shields.io/github/downloads/xenova/chat-downloader/total.svg)](https://github.com/xenova/chat-downloader/releases)
 
 `Chat Downloader`_ is a simple tool used to retrieve chat messages from livestreams,
 videos, clips and past broadcasts. No authentication needed!
 
-.. _Chat Downloader: https://github.com/xenova/chat-downloader
+.. _Chat Downloader: https://github.com/Indigo128/chat-downloader
 
 ******************
 Why this fork?
 ******************
 
-This fork introduces critical bug fixes for YouTube chat scraping that are not yet merged into the upstream repository (Pull Request is currently open):
+This fork introduces critical bug fixes for YouTube and Twitch chat scraping that are not yet merged into the upstream repository:
 
+* **Localized Account Cookies (YouTube):** Fixed a fatal ``400 Bad Request (INVALID_ARGUMENT)`` crash that occurs when session cookies belong to a localized user profile (e.g., Russian, Vietnamese, etc.). YouTube enforces the profile's locale, causing the InnerTube API to return localized dictionary keys instead of standard English labels, which breaks index slicing. Introduced absolute, language-agnostic tracking keys to decouple token extraction from language settings entirely.
 * **Lazy-loaded Cookies (YouTube):** Fixed an issue where initial requests to private, age-restricted (18+), or member-only videos would fail with a ``LoginRequired`` error because cookies were applied too late in the session lifecycle. Cookies are now safely loaded before the very first request is made.
 * **Modern Layout Support (YouTube):** Added full support for the new ``lockupViewModel`` UI layout introduced in May 2026. This allows the tool to successfully detect and parse stream metadata when scanning channel landing pages (such as ``/streams`` tab or handles like ``/@username``).
 * **Fix Infinite Channel Pagination (YouTube):** Resolved a critical bug where scanning a channel for active streams would trigger an infinite inner loop of API requests. The continuation token parser has been updated to correctly extract pagination info from the top-level grid items layout.
@@ -56,21 +47,23 @@ This fork introduces critical bug fixes for YouTube chat scraping that are not y
 Installation
 ############
 
-This tool is distributed on PyPI_ and can be installed with ``pip``:
-
-.. _PyPI: https://pypi.org/project/chat-downloader/
+You can install this specific fork with all cumulative fixes directly from GitHub using ``pip``:
 
 .. code:: console
 
-   $ pip install chat-downloader
+   $ pip install git+https://github.com/Indigo128/chat-downloader.git@all_current_fixes
 
-To update to the latest version, add the ``--upgrade`` flag to the above command.
-
-Alternatively, the tool can be installed with ``git``:
+To upgrade this fork to the latest commit in the future, run:
 
 .. code:: console
 
-   $ git clone https://github.com/xenova/chat-downloader.git
+   $ pip install --upgrade git+https://github.com/Indigo128/chat-downloader.git@all_current_fixes
+
+Alternatively, the tool can be installed locally by cloning the repository:
+
+.. code:: console
+
+   $ git clone -b all_current_fixes https://github.com/Indigo128/chat-downloader.git
    $ cd chat-downloader
    $ python setup.py install
 
@@ -178,7 +171,7 @@ Found a bug or have a suggestion? File an issue `here`_. To assist the
 developers in fixing the issue, please follow the issue template as
 closely as possible.
 
-.. _here: https://github.com/xenova/chat-downloader/issues/new/choose
+.. _here: https://github.com/Indigo128/chat-downloader/issues/new/choose
 
 
 ############
@@ -202,4 +195,3 @@ Supported sites:
 .. _Chat Item Wiki: https://github.com/xenova/chat-downloader/wiki/Item-Template
 .. _Command Line Wiki: https://github.com/xenova/chat-downloader/wiki/Command-Line-Usage
 .. _Python Wiki: https://github.com/xenova/chat-downloader/wiki/Python-Documentation
-

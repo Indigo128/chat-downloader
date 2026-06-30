@@ -1625,6 +1625,10 @@ class YouTubeChatDownloader(BaseChatDownloader):
             top_continuation = continuations[0]['continuation']['reloadContinuationData']['continuation']
             live_continuation = continuations[1]['continuation']['reloadContinuationData']['continuation']
 
+            # Store absolute keys inside continuation_info to completely bypass YouTube localization bugs
+            details['continuation_info']['Top'] = top_continuation
+            details['continuation_info']['Live'] = live_continuation
+
             # Fix: Upcoming video chat was not read correctly >>
             if details['status'] == 'upcoming':
                 details['continuation_info']['Top chat'] = top_continuation
@@ -1785,11 +1789,17 @@ class YouTubeChatDownloader(BaseChatDownloader):
         # Top chat replay - Some messages, such as potential spam, may not be visible
         # Live chat replay - All messages are visible
         chat_type = params.get('chat_type', 'live').title()  # Live or Top
-        continuation_index = 0 if chat_type == 'Top' else 1
-        continuation_info = list(initial_continuation_info.items())[
-            continuation_index]
-        continuation = continuation_info[1]
-        log('debug', f'Getting {chat_type} chat ({continuation_info[0]}).')
+        
+        # Safely fetch the pre-resolved tokens from our absolute keys if available
+        if chat_type in initial_continuation_info:
+            continuation = initial_continuation_info[chat_type]
+            log('debug', f'Getting {chat_type} chat using absolute pre-resolved token.')
+        else:
+            # Fallback to legacy index slicing if absolute keys are missing
+            continuation_index = 0 if chat_type == 'Top' else 1
+            continuation_info = list(initial_continuation_info.items())[continuation_index]
+            continuation = continuation_info[1]
+            log('debug', f'Getting {chat_type} chat ({continuation_info[0]}) via legacy fallback index.')
 
         is_replay = status == 'past'
 
